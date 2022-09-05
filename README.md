@@ -1,6 +1,6 @@
 - 👋 Hi, I’m @nadsella
 - 👀 I’m currently working at @graze
-- 🌱 I’m currently learning, all things AWS & Golang
+- 🌱 I’m currently learning, all things AWS & Go
 
 <!---
 nadsella/nadsella is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
