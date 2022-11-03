@@ -1,5 +1,5 @@
 - 👋 Hi, I’m @nadsella
-- 👀 I’m currently working at @graze
+- 👀 I’m currently working at @cuvva
 - 🌱 I’m currently learning, all things AWS & Go
 
 <!---
