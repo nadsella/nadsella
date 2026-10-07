@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Name Plate Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: the hero is a real-proportioned plate you type into; results are a grid of plates, each with its DVLA facts underneath. */
+:root {
+  --ground: #e8ebef;
+  --surface: #f7f8fa;
+  --ink: #15181d;
+  --muted: #586170;
+  --line: #cdd3db;
+  --accent: #1d3f9a;
+  --accent-ink: #ffffff;
+  --exact: #1f7a4a;
+  --close: #1d5fa8;
+  --creative: #9a5b00;
+  --stretch: #6a717c;
+
+  /* Plates are physical objects: same colours in both themes. */
+  --plate-yellow: #f7cd2e;
+  --plate-white: #f3f3ef;
+  --plate-ink: #0e0e0e;
+  --plate-edge: #1a1a1a;
+  --uk-blue: #1d3f9a;
+
+  --font-plate: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #121418;
+    --surface: #1b1e24;
+    --ink: #e7e9ed;
+    --muted: #9ba3b0;
+    --line: #2d323a;
+    --accent: #8eaaf5;
+    --accent-ink: #0d1530;
+    --exact: #5fcf91;
+    --close: #79aef0;
+    --creative: #e5a94a;
+    --stretch: #9aa1ac;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #121418;
+  --surface: #1b1e24;
+  --ink: #e7e9ed;
+  --muted: #9ba3b0;
+  --line: #2d323a;
+  --accent: #8eaaf5;
+  --accent-ink: #0d1530;
+  --exact: #5fcf91;
+  --close: #79aef0;
+  --creative: #e5a94a;
+  --stretch: #9aa1ac;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 400 1rem/1.5 var(--font-body);
+}
+.wrap {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 2.5rem 4rem;
+  display: grid;
+  gap: 2.5rem;
+}
+
+/* ---------- Hero ---------- */
+.hero { display: grid; gap: 1rem; justify-items: center; text-align: center; }
+.eyebrow {
+  font: 600 0.85rem/1 var(--font-plate);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0;
+}
+h1 {
+  font: 700 clamp(2rem, 6vw, 3.25rem)/1 var(--font-plate);
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { margin: 0; max-width: 34rem; color: var(--muted); }
+
+/* Plate (shared by the input and the results) */
+.plate {
+  container-type: inline-size;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 520 / 111;
+  display: flex;
+  align-items: stretch;
+  background: var(--plate-yellow);
+  color: var(--plate-ink);
+  border: 0.35cqw solid var(--plate-edge);
+  border-radius: 1.6cqw;
+  box-shadow: inset 0 0 0 0.6cqw var(--plate-yellow), inset 0 0 0 0.9cqw rgba(0,0,0,.55), 0 1px 0 rgba(0,0,0,.08), 0 6px 14px -8px rgba(0,0,0,.45);
+  overflow: hidden;
+  position: relative;
+}
+.front .plate, .plate.is-front { background: var(--plate-white); box-shadow: inset 0 0 0 0.6cqw var(--plate-white), inset 0 0 0 0.9cqw rgba(0,0,0,.55), 0 1px 0 rgba(0,0,0,.08), 0 6px 14px -8px rgba(0,0,0,.45); }
+.band {
+  flex: 0 0 9%;
+  background: var(--uk-blue);
+  color: #fff;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2.4cqw;
+  font: 700 4.6cqw/1 var(--font-plate);
+  letter-spacing: 0.02em;
+}
+.chars {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 19cqw/1 var(--font-plate);
+  letter-spacing: 0.01em;
+  white-space: pre;
+  padding-right: 4%;
+}
+.chars .wild { opacity: 0.32; }
+
+.hero-plate { width: min(100%, 640px); }
+.hero-plate .chars { padding: 0 4% 0 2%; }
+.hero-plate input {
+  all: unset;
+  width: 100%;
+  text-align: center;
+  font: 600 15cqw/1 var(--font-plate);
+  text-transform: uppercase;
+  color: var(--plate-ink);
+  caret-color: var(--uk-blue);
+}
+.hero-plate input::placeholder { color: rgba(0,0,0,.28); }
+.hero-plate:focus-within { outline: 3px solid var(--accent); outline-offset: 4px; }
+.hint { font-size: 0.9rem; color: var(--muted); margin: 0; }
+
+/* ---------- Controls ---------- */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+.seg { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.seg-label {
+  font: 600 0.8rem/1 var(--font-plate);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 0.25rem;
+}
+.chip {
+  font: 600 0.95rem/1 var(--font-plate);
+  letter-spacing: 0.04em;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+.chip:hover { border-color: var(--accent); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip .n { opacity: .7; font-variant-numeric: tabular-nums; margin-left: .25rem; }
+button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Results ---------- */
+.results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.25rem;
+}
+.card {
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+  min-width: 0;
+}
+.meta { display: flex; flex-wrap: wrap; gap: 0.35rem 0.5rem; align-items: center; font-size: 0.9rem; }
+.tag {
+  font: 600 0.78rem/1 var(--font-plate);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid currentColor;
+}
+.tag.fmt { color: var(--muted); }
+.tag.exact { color: var(--exact); }
+.tag.close { color: var(--close); }
+.tag.creative { color: var(--creative); }
+.tag.stretch { color: var(--stretch); }
+.fits { color: var(--muted); font-size: 0.88rem; margin: 0; }
+.subs { font-variant-numeric: tabular-nums; }
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.btn {
+  font: 600 0.88rem/1 var(--font-body);
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+.empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--muted);
+}
+.more { justify-self: center; }
+
+/* ---------- Guide ---------- */
+.guide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2rem;
+  border-top: 1px solid var(--line);
+  padding-top: 2rem;
+}
+.guide section { min-width: 0; }
+.guide h2 { font: 700 1.5rem/1.1 var(--font-plate); margin: 0 0 0.75rem; text-wrap: balance; }
+.guide p, .guide li { color: var(--muted); max-width: 65ch; }
+.guide p { margin: 0 0 0.75rem; }
+.guide ul { margin: 0; padding-left: 1.1rem; }
+.guide strong { color: var(--ink); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--line); }
+th { font: 600 0.8rem/1 var(--font-plate); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+td.code { font: 600 1.1rem/1 var(--font-plate); color: var(--ink); }
+.footnote { font-size: 0.85rem; color: var(--muted); text-align: center; margin: 0; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--ground);
+  padding: 0.55rem 0.9rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card { animation: rise .25s ease-out both; }
+  @keyframes rise { from { transform: translateY(4px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="hero">
+    <p class="eyebrow">UK private registrations</p>
+    <h1>Find a plate that spells your name</h1>
+    <p class="lede">Type a name and we'll fit it into every legal DVLA format, swapping in look-alike numbers where we need to.</p>
+    <label class="plate hero-plate" for="name">
+      <span class="band" aria-hidden="true">UK</span>
+      <span class="chars"><input id="name" type="text" maxlength="30" autocomplete="off" spellcheck="false" placeholder="YOUR NAME" aria-label="Name"></span>
+    </label>
+    <p class="hint">Try a first name, a nickname or a full name. Spaces are fine.</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" id="filters" role="group" aria-label="Plate style">
+      <span class="seg-label">Style</span>
+    </div>
+    <div class="seg" role="group" aria-label="Plate colour">
+      <span class="seg-label">Show as</span>
+      <button class="chip" type="button" id="rear" aria-pressed="true">Rear (yellow)</button>
+      <button class="chip" type="button" id="front" aria-pressed="false">Front (white)</button>
+    </div>
+  </div>
+
+  <div id="results" class="results" aria-live="polite"></div>
+  <button id="more" class="btn more" type="button" hidden>Show more</button>
+
+  <div class="guide">
+    <section>
+      <h2>The four formats</h2>
+      <table>
+        <thead><tr><th>Style</th><th>Example</th><th>Fits</th></tr></thead>
+        <tbody>
+          <tr><td>Dateless</td><td class="code">SAM 1</td><td>Any vehicle</td></tr>
+          <tr><td>Current</td><td class="code">AB12 CDE</td><td>From 2001</td></tr>
+          <tr><td>Prefix</td><td class="code">A123 BCD</td><td>From 1983</td></tr>
+          <tr><td>Suffix</td><td class="code">ABC 123D</td><td>From 1963</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:.75rem">A plate can't make a vehicle look newer than it is. The year letter or age identifier sets the earliest registration date a plate can go on. Dateless plates carry no date, so they fit anything.</p>
+    </section>
+    <section>
+      <h2>Look-alike characters</h2>
+      <p>Where a name needs a number, we swap in the digit that reads most like the letter. The closer the match, the higher it ranks.</p>
+      <table>
+        <thead><tr><th>Letter</th><th>Digit</th><th>Letter</th><th>Digit</th></tr></thead>
+        <tbody>
+          <tr><td class="code">O</td><td class="code">0</td><td class="code">E</td><td class="code">3</td></tr>
+          <tr><td class="code">I</td><td class="code">1</td><td class="code">A</td><td class="code">4</td></tr>
+          <tr><td class="code">S</td><td class="code">5</td><td class="code">G</td><td class="code">6</td></tr>
+          <tr><td class="code">B</td><td class="code">8</td><td class="code">T</td><td class="code">7</td></tr>
+          <tr><td class="code">Z</td><td class="code">2</td><td class="code">L</td><td class="code">1</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Before you buy</h2>
+      <ul>
+        <li><strong>Faded characters are free choices.</strong> Pick any letter or number the DVLA has left.</li>
+        <li><strong>Spacing is fixed by law.</strong> Moving the gap or using a stylised font to "fix" a spelling can mean an MOT fail, a fine of up to £1,000 and the DVLA withdrawing the number.</li>
+        <li><strong>The DVLA withholds some combinations</strong>, including ones it finds offensive, and many plates are already owned. Use the DVLA link on each card to check what's for sale.</li>
+        <li>These suggestions follow the published format rules but aren't a guarantee a number exists or is available.</li>
+      </ul>
+    </section>
+  </div>
+  <p class="footnote">Not affiliated with the DVLA. Made with Claude Code.</p>
+</main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  // ---- DVLA format rules -------------------------------------------------
+  // Letter -> look-alike digit, with a cost (lower reads more naturally).
+  const TO_DIGIT = { O: ['0', .2], I: ['1', .3], S: ['5', .4], B: ['8', .5], Z: ['2', .5],
+                     E: ['3', .6], A: ['4', .6], G: ['6', .6], T: ['7', .7], L: ['1', .7] };
+  const TO_LETTER = { '0': 'O', '1': 'I', '2': 'Z', '3': 'E', '4': 'A', '5': 'S', '6': 'G', '7': 'T', '8': 'B' };
+
+  // Year letters (I, O, Q, U and Z were never used).
+  const PREFIX_YEARS = { A: 'Aug 1983', B: 'Aug 1984', C: 'Aug 1985', D: 'Aug 1986', E: 'Aug 1987', F: 'Aug 1988',
+    G: 'Aug 1989', H: 'Aug 1990', J: 'Aug 1991', K: 'Aug 1992', L: 'Aug 1993', M: 'Aug 1994', N: 'Aug 1995',
+    P: 'Aug 1996', R: 'Aug 1997', S: 'Aug 1998', T: 'Mar 1999', V: 'Sep 1999', W: 'Mar 2000', X: 'Sep 2000', Y: 'Mar 2001' };
+  const SUFFIX_YEARS = { A: '1963', B: '1964', C: '1965', D: '1966', E: '1967', F: 'Aug 1967', G: 'Aug 1968',
+    H: 'Aug 1969', J: 'Aug 1970', K: 'Aug 1971', L: 'Aug 1972', M: 'Aug 1973', N: 'Aug 1974', P: 'Aug 1975',
+    R: 'Aug 1976', S: 'Aug 1977', T: 'Aug 1978', V: 'Aug 1979', W: 'Aug 1980', X: 'Aug 1981', Y: 'Aug 1982' };
+
+  // Current-style age identifiers issued so far: 51 (Sep 2001), 02 (Mar 2002), 52, 03 ... up to today.
+  const AGE_IDS = (() => {
+    const now = new Date();
+    const yy = now.getFullYear() % 100, month = now.getMonth() + 1;
+    const ids = [51];
+    for (let y = 2; y <= yy; y++) {
+      if (y < yy || month >= 3) ids.push(y);
+      if (y < yy || month >= 9) ids.push(y + 50);
+    }
+    return ids.map(n => String(n).padStart(2, '0'));
+  })();
+  const ageLabel = id => { const n = +id; return n > 50 ? `Sep ${2000 + n - 50}` : `Mar ${2000 + n}`; };
+
+  const FORMATS = { dateless: 'Dateless', current: 'Current', prefix: 'Prefix', suffix: 'Suffix' };
+
+  // Each pattern is a list of groups: t = L(etters)/D(igits), n = length, role, sp = space before.
+  function patternsFor(len) {
+    const out = [];
+    for (let a = 1; a <= 3; a++) {
+      const d = len - a;
+      if (d < 1 || d > 4) continue;
+      out.push({ format: 'dateless', groups: [{ t: 'L', n: a, role: 'free' }, { t: 'D', n: d, role: 'num', sp: true }] });
+      out.push({ format: 'dateless', groups: [{ t: 'D', n: d, role: 'num' }, { t: 'L', n: a, role: 'free', sp: true }] });
+    }
+    const d = len - 4;
+    if (d >= 1 && d <= 3) {
+      out.push({ format: 'prefix', groups: [{ t: 'L', n: 1, role: 'prefixYear' }, { t: 'D', n: d, role: 'num' }, { t: 'L', n: 3, role: 'area', sp: true }] });
+      out.push({ format: 'suffix', groups: [{ t: 'L', n: 3, role: 'area' }, { t: 'D', n: d, role: 'num', sp: true }, { t: 'L', n: 1, role: 'suffixYear' }] });
+    }
+    if (len === 7) {
+      out.push({ format: 'current', groups: [{ t: 'L', n: 2, role: 'memory' }, { t: 'D', n: 2, role: 'age' }, { t: 'L', n: 3, role: 'random', sp: true }] });
+    }
+    return out;
+  }
+
+  const BANNED = { free: 'Q', area: 'IQ', random: 'IQ', memory: 'IQZ', prefixYear: '', suffixYear: '' };
+
+  // Try to lay `chars` (letters, digits or '*' wildcards) onto a pattern.
+  function fit(chars, pat) {
+    let i = 0, cost = 0;
+    const subs = [], groups = [];
+    for (const g of pat.groups) {
+      const cells = [];
+      for (let k = 0; k < g.n; k++, i++) {
+        const c = chars[i];
+        if (c === '*') { cells.push({ ch: null, wild: true }); continue; }
+        const isDigit = c >= '0' && c <= '9';
+        if (g.t === 'L') {
+          if (!isDigit) cells.push({ ch: c });
+          else if (TO_LETTER[c]) { cells.push({ ch: TO_LETTER[c] }); cost += .6; subs.push(`${TO_LETTER[c]}=${c}`); }
+          else return null;
+        } else {
+          if (isDigit) cells.push({ ch: c });
+          else if (TO_DIGIT[c]) { const [dg, w] = TO_DIGIT[c]; cells.push({ ch: dg }); cost += w; subs.push(`${dg}=${c}`); }
+          else return null;
+        }
+      }
+      if (!fillAndCheck(g, cells)) return null;
+      groups.push({ sp: !!g.sp, cells, role: g.role });
+    }
+    let fits = 'Fits any vehicle';
+    const yearCell = groups.find(g => g.role === 'prefixYear' || g.role === 'suffixYear' || g.role === 'age');
+    if (yearCell) {
+      const key = yearCell.cells.map(c => c.ch).join('');
+      const date = yearCell.role === 'age' ? ageLabel(key) : (yearCell.role === 'prefixYear' ? PREFIX_YEARS : SUFFIX_YEARS)[key];
+      fits = `Vehicles registered from ${date}`;
+    }
+    return { format: pat.format, groups, cost, subs: [...new Set(subs)], fits };
+  }
+
+  function fillAndCheck(g, cells) {
+    if (g.role === 'age') {
+      const want = cells.map(c => c.ch);
+      const id = AGE_IDS.find(a => want.every((ch, k) => ch === null || ch === a[k]));
+      if (!id) return false;
+      cells.forEach((c, k) => { c.ch = id[k]; });
+      return true;
+    }
+    if (g.role === 'num') {
+      cells.forEach(c => { if (c.wild) c.ch = '1'; });
+      return cells[0].ch !== '0';
+    }
+    if (g.role === 'prefixYear' || g.role === 'suffixYear') {
+      const years = g.role === 'prefixYear' ? PREFIX_YEARS : SUFFIX_YEARS;
+      if (cells[0].wild) cells[0].ch = 'A';
+      return !!years[cells[0].ch];
+    }
+    cells.forEach(c => { if (c.wild) c.ch = 'X'; });
+    return cells.every(c => c.wild || !BANNED[g.role].includes(c.ch));
+  }
+
+  // ---- Candidate strings from a name --------------------------------------
+  function candidates(input) {
+    const words = input.toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .split(/[^A-Z0-9]+/).filter(Boolean);
+    const out = new Map();
+    const add = (s, cost, note) => {
+      if (!s || s.length > 7) return;
+      const prev = out.get(s);
+      if (!prev || prev.cost > cost) out.set(s, { cost, note });
+    };
+    if (!words.length) return out;
+    const full = words.join('');
+    add(full, 0, '');
+    if (words.length > 1) {
+      words.forEach((w, i) => add(w, i === 0 ? .3 : .5, ''));
+      add(words.map(w => w[0]).join(''), 1.4, 'Initials');
+      add(words[0][0] + words[words.length - 1], .8, 'Initial + surname');
+    }
+    const bases = [...new Set([full, ...words])];
+    for (const b of bases) {
+      for (let k = 3; k < b.length && k <= 7; k++) add(b.slice(0, k), .6 + (b.length - k) * .35, 'Shortened');
+      if (b.length > 4) {
+        const skel = b[0] + b.slice(1).replace(/[AEIOU]/g, '');
+        if (skel !== b) add(skel, 1.3, 'No vowels');
+      }
+    }
+    return out;
+  }
+
+  function suggest(input) {
+    const best = new Map();
+    for (const [s, cand] of candidates(input)) {
+      const variants = [[s, 0]];
+      if (s.length <= 6) variants.push(['*' + s, 1], [s + '*', .9]);
+      if (s.length <= 5) variants.push(['**' + s, 2], [s + '**', 1.9], ['*' + s + '*', 2]);
+      for (const [v, wildCost] of variants) {
+        for (const pat of patternsFor(v.length)) {
+          const r = fit([...v], pat);
+          if (!r) continue;
+          const bias = { dateless: 0, prefix: .1, suffix: .15, current: .2 }[r.format];
+          r.cost += cand.cost + wildCost + bias;
+          r.note = cand.note;
+          r.core = s;
+          r.key = r.groups.map(g => (g.sp ? ' ' : '') + g.cells.map(c => c.wild ? c.ch.toLowerCase() : c.ch).join('')).join('');
+          const prev = best.get(r.key);
+          if (!prev || prev.cost > r.cost) best.set(r.key, r);
+        }
+      }
+    }
+    return [...best.values()].sort((a, b) => a.cost - b.cost || a.key.localeCompare(b.key));
+  }
+
+  // ---- UI -----------------------------------------------------------------
+  const $ = id => document.getElementById(id);
+  const input = $('name'), results = $('results'), filters = $('filters'), more = $('more'), toast = $('toast');
+  let filter = 'all', limit = 24, all = [];
+
+  const quality = c => c < .35 ? ['exact', 'Exact'] : c < 1.2 ? ['close', 'Close'] : c < 2.4 ? ['creative', 'Creative'] : ['stretch', 'Stretch'];
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function plateEl(r) {
+    const p = el('div', 'plate');
+    p.setAttribute('role', 'img');
+    p.setAttribute('aria-label', 'Number plate ' + plainText(r));
+    p.append(el('span', 'band', 'UK'));
+    const chars = el('span', 'chars');
+    r.groups.forEach(g => {
+      if (g.sp) chars.append(' ');
+      g.cells.forEach(c => chars.append(c.wild ? el('span', 'wild', c.ch) : c.ch));
+    });
+    p.append(chars);
+    return p;
+  }
+  const plainText = r => r.groups.map(g => (g.sp ? ' ' : '') + g.cells.map(c => c.ch).join('')).join('');
+
+  function card(r) {
+    const c = el('article', 'card');
+    c.append(plateEl(r));
+    const meta = el('div', 'meta');
+    const [qc, ql] = quality(r.cost);
+    meta.append(el('span', 'tag ' + qc, ql), el('span', 'tag fmt', FORMATS[r.format]));
+    if (r.note) meta.append(el('span', 'tag fmt', r.note));
+    c.append(meta);
+    const fits = el('p', 'fits', r.fits);
+    if (r.subs.length) fits.append(' · ', el('span', 'subs', r.subs.join(', ')));
+    if (r.groups.some(g => g.cells.some(x => x.wild))) fits.append(' · faded = your choice');
+    c.append(fits);
+    const actions = el('div', 'actions');
+    const copy = el('button', 'btn', 'Copy');
+    copy.type = 'button';
+    copy.addEventListener('click', () => {
+      const text = plainText(r);
+      const ok = () => say(`Copied ${text}`);
+      try { navigator.clipboard.writeText(text).then(ok, () => say(text)); } catch { say(text); }
+    });
+    const dvla = el('a', 'btn', 'Check on DVLA');
+    const core = r.groups.map(g => g.cells.filter(x => !x.wild).map(x => x.ch).join('')).join('');
+    dvla.href = 'https://dvlaregistrations.dvla.gov.uk/search/results.html?search=' + encodeURIComponent(core);
+    dvla.target = '_blank';
+    dvla.rel = 'noopener';
+    actions.append(copy, dvla);
+    c.append(actions);
+    return c;
+  }
+
+  let toastTimer;
+  function say(msg) {
+    toast.textContent = msg;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.hidden = true; }, 1800);
+  }
+
+  function renderFilters() {
+    const counts = { all: all.length };
+    all.forEach(r => { counts[r.format] = (counts[r.format] || 0) + 1; });
+    filters.querySelectorAll('.chip').forEach(b => b.remove());
+    for (const key of ['all', ...Object.keys(FORMATS)]) {
+      const b = el('button', 'chip', key === 'all' ? 'All' : FORMATS[key]);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(filter === key));
+      b.append(el('span', 'n', String(counts[key] || 0)));
+      b.addEventListener('click', () => { filter = key; limit = 24; renderFilters(); renderResults(); });
+      filters.append(b);
+    }
+  }
+
+  function renderResults() {
+    const list = filter === 'all' ? all : all.filter(r => r.format === filter);
+    results.replaceChildren();
+    if (!input.value.trim()) {
+      results.append(el('p', 'empty', 'Type a name on the plate above to see suggestions.'));
+    } else if (!list.length) {
+      results.append(el('p', 'empty', filter === 'all'
+        ? 'No legal plate fits that name. Try a shorter version or a nickname.'
+        : `No ${FORMATS[filter].toLowerCase()} plates fit. Try another style.`));
+    }
+    list.slice(0, limit).forEach(r => results.append(card(r)));
+    more.hidden = list.length <= limit;
+    more.textContent = `Show more (${list.length - limit})`;
+  }
+
+  function update() {
+    all = suggest(input.value);
+    limit = 24;
+    if (filter !== 'all' && !all.some(r => r.format === filter)) filter = 'all';
+    renderFilters();
+    renderResults();
+    const token = input.value.trim().replace(/[^A-Za-z0-9]+/g, '-');
+    try { history.replaceState(null, '', token ? '#' + token : location.pathname); } catch {}
+  }
+
+  let t;
+  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(update, 120); });
+  more.addEventListener('click', () => { limit += 24; renderResults(); });
+
+  const setSide = front => {
+    document.body.classList.toggle('front', front);
+    $('front').setAttribute('aria-pressed', String(front));
+    $('rear').setAttribute('aria-pressed', String(!front));
+  };
+  $('front').addEventListener('click', () => setSide(true));
+  $('rear').addEventListener('click', () => setSide(false));
+
+  let start = 'Nadja';
+  try { const h = decodeURIComponent(location.hash.slice(1)).replace(/-/g, ' ').trim(); if (h) start = h; } catch {}
+  input.value = start;
+  update();
+})();
+</script>
+</body>
+</html>
